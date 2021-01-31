@@ -237,7 +237,7 @@ def validation(
                 or values from data dictionary if data is valid
     """
     # user data validation
-    status, message_dict = validate_schema(data, schema)
+    status, message_dict = schema_validation_caller(data, schema)
     if not status:
         return status, message_dict
     values = list(data.values())
@@ -262,7 +262,7 @@ def validation(
     return True, values
 
 
-def schema_validation(data: dict, schema: dict) -> tuple:
+def schema_validation_caller(data: dict, schema: dict) -> tuple:
     """ Schema validation.
 
     Arguments:
@@ -328,7 +328,6 @@ def inner_data_validation(
                        if user that sends money does not have tokens
     """
     global values
-    validate_schema(schema, data)
     values_list = list(data.values())
 
     for dictionary in values_list:
