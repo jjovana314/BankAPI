@@ -1,0 +1,6 @@
+Flask
+pymongo
+Werkzeug
+flask_restful
+bcrypt
+jsonschema
