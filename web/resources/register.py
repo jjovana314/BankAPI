@@ -24,6 +24,7 @@ class Register(Resource):
             return jsonify(result)
         username_or_dict, password_or_false = helper.arguments_validation(result)
         if isinstance(password_or_false, bool):
+            # username_or_dict is dict with error message and code
             return jsonify(username_or_dict)
 
         username, password = username_or_dict, password_or_false
