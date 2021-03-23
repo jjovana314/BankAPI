@@ -41,7 +41,8 @@ class Register(Resource):
         )
         # ! put this into smaller function
         insert_register_data(username, hashed_pw)
-        
+        insert_bank_configuragion(password_bank_hashed)
+
         return jsonify(
             {
                 "Code": config.OK,
