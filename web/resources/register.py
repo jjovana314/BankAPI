@@ -15,13 +15,13 @@ class Register(Resource):
         Returns:
             BaseResponse instance with message and status for API
         """
-        data = request.get_json()
-
+        server_data = request.get_json()
         is_valid, register_server_data = helper.validation(
-            schemas.register_schema, data, is_register=True
+            schemas.register_schema, server_data, is_register=True
         )
         if not is_valid:
             return jsonify(register_server_data)
+
         username_or_dict, password_or_false = helper.arguments_validation(register_server_data)
         if isinstance(password_or_false, bool):
             # username_or_dict is dict with error message and code
@@ -35,11 +35,8 @@ class Register(Resource):
             )
         hashed_pw = bcrypt.hashpw(password.encode("utf8"), bcrypt.gensalt())
 
-        password_bank_hashed = bcrypt.hashpw(
-            config.bank_password.encode("utf8"), bcrypt.gensalt()
-        )
         insert_register_data(username, hashed_pw)
-        insert_bank_configuragion(password_bank_hashed)
+        insert_bank_configuragion(password_hashing())
 
         return jsonify(
             {
@@ -70,3 +67,7 @@ def insert_bank_configuragion(password_bank_hashed):
             "Balance": config.bank_balance
         }
     )
+
+
+def password_hashing():
+    return bcrypt.hashpw(config.bank_password.encode("utf8"), bcrypt.gensalt())
