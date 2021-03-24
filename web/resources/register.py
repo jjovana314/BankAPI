@@ -35,7 +35,7 @@ class Register(Resource):
             )
 
         insert_register_data(username, password)
-        insert_bank_configuragion(bank_pwd_hashing())
+        insert_bank_configuragion()
 
         return jsonify({"Code": config.OK,"Message": "You succesfully signed up."})
 
@@ -53,11 +53,11 @@ def insert_register_data(username, hashed_pw):
     )
 
 
-def insert_bank_configuragion(password_bank_hashed):
+def insert_bank_configuragion():
     config.bank.insert(
         {
             "Username": config.bank_name,
-            "Password": password_bank_hashed,
+            "Password": bank_pwd_hashing(),
             "Balance": config.bank_balance
         }
     )
