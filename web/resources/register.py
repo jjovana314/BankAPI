@@ -33,17 +33,11 @@ class Register(Resource):
             return jsonify(
                 {"Message": "This username is taken.", "Code": config.INVALID_USERNAME}
             )
-        hashed_pw = bcrypt.hashpw(password.encode("utf8"), bcrypt.gensalt())
 
-        insert_register_data(username, hashed_pw)
-        insert_bank_configuragion(password_hashing())
+        insert_register_data(username, password)
+        insert_bank_configuragion(bank_pwd_hashing())
 
-        return jsonify(
-            {
-                "Code": config.OK,
-                "Message": "You succesfully signed up."
-            }
-        )
+        return jsonify({"Code": config.OK,"Message": "You succesfully signed up."})
 
 
 def insert_register_data(username, hashed_pw):
@@ -69,5 +63,5 @@ def insert_bank_configuragion(password_bank_hashed):
     )
 
 
-def password_hashing():
+def bank_pwd_hashing():
     return bcrypt.hashpw(config.bank_password.encode("utf8"), bcrypt.gensalt())
