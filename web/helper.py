@@ -235,7 +235,6 @@ def schema_validation_caller(schema: dict) -> tuple:
     """ Schema validation.
 
     Arguments:
-        data {dict} -- dictionary with all data
         schema {dict} -- schema for validation
 
     Returns:
