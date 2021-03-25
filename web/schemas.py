@@ -13,7 +13,7 @@ login_schema = {
     "properties": {
         "username": {"type": "string", "minLength": 1, "maxLength": 20},
         "password": {"type": "string", "minLength": 7, "maxLength": 50},
-        "sentance": {"type": "string", "minLength": 1, "maxLenth": 20}
+        "sentence": {"type": "string", "minLength": 1, "maxLenth": 20}
     },
     "additionalProperties": False,
     "required": ["username", "password", "sentance"]
