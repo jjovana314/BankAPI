@@ -16,8 +16,9 @@ class Register(Resource):
             BaseResponse instance with message and status for API
         """
         server_data = request.get_json()
+        helper.set_server_data(server_data)
         is_valid, register_server_data = helper.validation(
-            schemas.register_schema, server_data, is_register=True
+            schemas.register_schema, is_register=True
         )
         if not is_valid:
             return jsonify(register_server_data)
