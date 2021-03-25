@@ -14,9 +14,23 @@ from json import dumps, loads
 
 
 # TODO: fix bug in inner_data_validation function
+server_data_global = dict()
 
 
-def validate_schema(schema: dict, data: dict) -> None:
+def set_server_data(server_data):
+    global server_data_global
+    server_data_global = server_data
+
+
+def get_username():
+    return server_data_global["username"]
+
+
+def get_admin_username():
+    return server_data_global["admin"]
+
+
+def validate_schema(schema: dict) -> None:
     """ JSON schema validation.
 
     Arguments:
@@ -27,7 +41,7 @@ def validate_schema(schema: dict, data: dict) -> None:
         SchemaError: if data dictionary is not valid
     """
     # we want json data, so we have to dump our data into json string
-    data = dumps(data)
+    data = dumps(server_data_global)
     try:
         # try to do validation for our json data
         validate(loads(data), schema)
@@ -41,111 +55,82 @@ def validate_schema(schema: dict, data: dict) -> None:
                 raise schema_exceptions[idx](error_messages[idx])
 
 
-def username_exist(users: MongoClient, username: str) -> bool:
+def username_exist() -> bool:
     """ Check if username exist in database.
-
-    Arguments:
-        users {MongoClient} -- database
-        username {str} -- username
 
     Returns:
         bool -- True if username exist, False otherwise
     """
-    if users.find({"Username": username}).count() == 0:
+    if config.users.find({"Username": get_username()}).count() == 0:
         return False
     return True
 
 
-def verify_password(
-    users: MongoClient, password: str, username: str
-) -> bool:
+def verify_password(password: str) -> bool:
     """ Password verification.
-
-    Arguments:
-        users {MongoClient} -- database
-        password {str} -- password
 
     Returns:
         bool -- True if password matches username, False otherwise
     """
     # check if username exist in database
-    if not username_exist(users, username):
+    if not username_exist(config.users):
         return False
 
-    password_db = users.find(
+    password_db = config.users.find(
         {
-            "Username": username
+            "Username": get_username()
         }
     )[0]["Password"]
 
-    hashed_pw = bcrypt.hashpw(
-        password.encode("utf8"), password_db
-    )
+    hashed_pw = bcrypt.hashpw(password.encode("utf8"), password_db)
     return hashed_pw == password_db
 
 
-def count_tokens(users: MongoClient, username: str) -> int:
+def count_tokens() -> int:
     """ Token counting.
-
-    Arguments:
-        users {MongoClient} -- database
-        username {str} -- username
 
     Returns:
         int -- number of tokens
     """
-    return users.find(
+    return config.users.find(
         {
-            "Username": username
+            "Username": get_username()
         }
     )[0]["Tokens"]
 
 
-def validate_tokens(
-    users: MongoClient, username: str, code: int
-) -> None:
+def validate_tokens(code: int) -> None:
     """ Validate that user has enough tokens.
 
     Arguments:
-        users {MongoClient} -- database
-        username {str} -- username
         code {int} -- code for error
 
     Raises:
         TokensException: if user does not have enough tokens
     """
-    if count_tokens(users, username) <= 0:
+    if count_tokens() <= 0:
         raise exceptions.TokensException(
             "You are out of tokens, please refill.", code
         )
 
 
-def validate_username(
-    users: MongoClient, username: str, code: int
-) -> None:
+def validate_username(code: int) -> None:
     """ Validate that username exist in database.
 
     Arguments:
-        users {MongoClient} -- database
-        username {str} -- username
         code {int} -- code for error
 
     Raises:
         UserException: If username does not exist in database
     """
-    if not username_exist(users, username):
+    if not username_exist():
         raise exceptions.UserException("This username does not exist.", code)
 
 
-def update_tokens(
-    users: MongoClient, username: str,
-    tokens_update: int, operation: operator
-) -> None:
+def update_tokens(tokens_update: int, operation: operator) -> None:
     """ Update tokens for user in database.
 
     Arguments:
-        users {MongoClient} -- database
-        username {str} -- username
         tokens_update {int} -- number of tokens for update
         operation {operator} -- operation that we want
                                 to implement (sub or add)
@@ -164,27 +149,21 @@ def update_tokens(
             "You can only add or subtract tokens",
             BAD_REQUEST
         )
-    tokens_current = count_tokens(users, username)
-    users.update(
+    tokens_current = count_tokens()
+    config.users.update(
+        {"Username": get_username()},
         {
-            "Username": username
-        },
-        {
-            "$set": {
-                "Tokens": operation(tokens_current, tokens_update)
-            }
+            "$set": {"Tokens": operation(tokens_current, tokens_update)}
         }
     )
 
 
 def update_balance(
-    users: MongoClient, username: str, amount: float,
-    money_curr: float, operation: operator
+    amount: float, money_curr: float, operation: operator
 ) -> None:
     """ Update balance for account.
 
     Arguments:
-        users {MongoClient} -- database
         username {str} -- username
         amount {float} -- amount for balance update
         operation {operator} -- add or subtract
@@ -197,14 +176,10 @@ def update_balance(
             "You can only add or subtract balance from account",
             config.BAD_REQUEST
         )
-    users.update(
+    config.users.update(
+        {"Username": get_username()},
         {
-            "Username": username
-        },
-        {
-            "$set": {
-                "Balance": operation(money_curr, amount)
-            }
+            "$set": {"Balance": operation(money_curr, amount)}
         }
     )
 
@@ -215,17 +190,12 @@ error_pwd_msg = "Password you entered is not valid"
 error_schema = "Schema not match"
 
 
-def validation(
-    users: MongoClient, schema: dict, data: dict, keys: list,
-    is_register=False, token_validation=True
-) -> tuple:
+def validation(schema: dict, is_register=False, token_validation=True) -> tuple:
     """ Validation for data dictionary.
 
     Arguments:
-        users {MongoClient} -- database
         schema {dict} -- schema for validation
         data {dict} -- data dictionary for validation
-        keys {list} -- list with valid keys
         is_register {:obj:'boolean', optional} -- True if class Register is caller.
                                                   Default is False
         token_validation {:obj"'bolean', optional} -- False if caller does not want
@@ -237,18 +207,17 @@ def validation(
                 or values from data dictionary if data is valid
     """
     # user data validation
-    status, message_dict = schema_validation_caller(data, schema)
+    status, message_dict = schema_validation_caller(schema)
     if not status:
         return status, message_dict
-    values = list(data.values())
-    username = data["username"]
+    values = list(server_data_global.values())
     # validate userame existance
-    usr_exist = username_exist(users, username)
+    usr_exist = username_exist()
 
     # if the class that our function is called by is not
     # Register class, we do the validation on specific way
     if not is_register:
-        inner_validation_caller(usr_exist, token_validation, users, schema, data)
+        inner_validation_caller(usr_exist, token_validation, schema)
     else:
         # if our caller is Register class
         # we want to report error if username exist
@@ -262,7 +231,7 @@ def validation(
     return True, values
 
 
-def schema_validation_caller(data: dict, schema: dict) -> tuple:
+def schema_validation_caller(schema: dict) -> tuple:
     """ Schema validation.
 
     Arguments:
@@ -275,7 +244,7 @@ def schema_validation_caller(data: dict, schema: dict) -> tuple:
             True if data is valid and None object
     """
     try:
-        validate_schema(schema, data)
+        validate_schema(schema)
     except exceptions.SchemaError as ex:
         return (False, {
             "Message": error_schema,
@@ -285,11 +254,9 @@ def schema_validation_caller(data: dict, schema: dict) -> tuple:
         return True, None
 
 
-def inner_validation_caller(usr_exist, token_validation, users, schema, data):
+def inner_validation_caller(usr_exist, token_validation, schema):
     try:
-        inner_data_validation(
-            usr_exist, token_validation, users, schema, data
-        )
+        inner_data_validation(usr_exist, token_validation, schema)
     except exceptions.UserException as ex:
         return (False, {
             "Message": ex.args[0],
@@ -308,8 +275,7 @@ values = []
 
 
 def inner_data_validation(
-    usr_exist: bool, token_validation: bool, users: MongoClient,
-    schema: dict, data: dict
+    usr_exist: bool, token_validation: bool, schema: dict
 ) -> None:
     """ Validate inner data from dictionary.
 
@@ -318,56 +284,68 @@ def inner_data_validation(
                             False otherwise
         token_validation {bool} -- True if user wants to validate
                                     tokens, False otherwise
-        users {MongoClient} -- database
         schema {dict} -- schema for validation
-        data {dict} -- data for validation
 
     Raises:
         UserException: if user does not exist in database
                        if password is not valid
                        if user that sends money does not have tokens
     """
-    global values
-    values_list = list(data.values())
 
-    for dictionary in values_list:
-        verification_all_pwd = dictionary_appending(users, data, dictionary)
+    for dictionary in list(server_data_global.values()):
+
+        verification_all_pwd = verify_password(server_data_global["password"])
 
     if not usr_exist:
         raise exceptions.UserException(error_usr_exist, config.INVALID_USERNAME)
 
-    if not verification_all_pwd:
-        raise exceptions.UserException(error_pwd_msg, config.INVALID_PASSWORD)
+    # remember to call password_invalid_exception_raising()
+    password_invalid_exception_raising()
 
     # if admin wants to validate that there is enough
     # tokens for current user
     if token_validation:
-        validate_tokens(users, values[0], config.OUT_OF_TOKENS)
+        validate_tokens(config.OUT_OF_TOKENS)
 
 
-def password_validation_caller(users: MongoClient, data: dict, user: str) -> bool:
+def dict_append_caller(current_dict):
+    dictionary_appending(config.users, current_dict)
+
+
+def admin_user_pwd():
+    try:
+        return server_data_global["password"]
+    except KeyError:
+        try:
+            return server_data_global["admin_password"]
+        except KeyError:
+            raise exceptions.UserException("Please enter password", config.INVALID_PASSWORD)
+
+
+def password_invalid_exception_raising():
+    if not verification_all_pwd:
+        raise exceptions.UserException(error_pwd_msg, config.INVALID_PASSWORD)
+
+
+def password_validation_caller(user: str) -> bool:
     """ Calling password_validation function and catch exception.
 
     Arguments:
-        users {MongoClient}: users database
-        data {dict}: dictionary with all data
-        user {str}: user's name in database
+        user {str} -- user's name in database
 
     Return:
         True if password is valid, False otherwise
     """
     try:
-        return verify_password(users, data["password"], user)
+        return verify_password(server_data_global["password"], user)
     except KeyError: 
-        return verify_password(users, data["admin_password"], "administrator")
+        return verify_password(server_data_global["admin_password"], "administrator")
 
 
-def dictionary_appending(users: MongoClient, data: dict, current_dict: dict) -> bool:
+def dictionary_appending(current_dict: dict) -> bool:
     """ Appending dictionaries to list.
 
     Arguments:
-        users {MongoClient}: database
-        data {dict}: dictionary with all data
         current_dict {dict}: current dictionary
 
     Returns:
@@ -375,23 +353,20 @@ def dictionary_appending(users: MongoClient, data: dict, current_dict: dict) -> 
     """
     global values
     if isinstance(current_dict, dict):
-            # if value from data is dictionary
-            values, verification_all_pwd = inner_dict_validation(users, data)
+        # if value from data is dictionary
+        values, verification_all_pwd = inner_dict_validation()
     else:
         values.append(current_dict)
         user = data.get("username", None)
         if user is not None:
-            verification_all_pwd = password_validation_caller(users, data, user)
+            verification_all_pwd = password_validation_caller(user)
     return verification_all_pwd
 
 
-def inner_dict_validation(
-    users: MongoClient, data: dict
-) -> tuple:
+def inner_dict_validation(data: dict) -> tuple:
     """ Validation for inner dictionary.
 
     Arguments:
-        users {MongoClient} -- database
         data {dict} -- outter dictioanry
 
     Returns:
@@ -405,9 +380,50 @@ def inner_dict_validation(
     usr_2 = data["user2"]["username"]
     pwd_2 = data["user2"]["password"]
 
-    verify_1 = verify_password(users, pwd_1, usr_1)
-    verify_2 = verify_password(users, pwd_2, usr_2)
+    verify_1 = verify_password(pwd_1, usr_1)
+    verify_2 = verify_password(pwd_2, usr_2)
     verification_all_pwd = verify_1 and verify_2
     values = [usr_1, pwd_1, usr_2, pwd_2]
 
     return values, verification_all_pwd
+
+
+def balance_validation(username_user1: str, username_user2: str) -> None:
+    """ Balance validation.
+
+    Arguments:
+        username_user1 {str} -- user from whom we take the money
+        username_user2 {str} -- user whom we pay the money
+
+    Raises:
+        ValueError: if user does not have enough money for transaction
+    """
+    balance_user1 = find_balance(username_user1)
+    balance_user2 = find_balance(username_user2)
+    if balance_user1 < balance_user2:
+        raise ValueError(
+            "You don't have enough money to perform this transaction", config.NOT_ENOUGH_MONEY
+        )
+
+
+def find_balance(username: str) -> float:
+    return config.users.find(
+        {"Username": get_username()}
+    )[0]["Balance"]
+
+
+def amount_validation(amount: float) -> None:
+    balance_usr = find_balance()
+    if amount > balance_usr:
+        raise ValueError(
+            "You don't have enough money to pay loan.", config.NOT_ENOUGH_MONEY
+        )
+
+
+def arguments_validation(server_values: list):
+    try:
+        username, password = server_values
+    except ValueError as ex:
+        return {"message": ex.args[0], "code": config.BAD_REQUEST}, False
+    else:
+        return username, password
