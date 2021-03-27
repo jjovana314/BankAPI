@@ -41,7 +41,8 @@ class Register(Resource):
         return jsonify({"Code": config.OK,"Message": "You succesfully signed up."})
 
 
-def insert_register_data(username, hashed_pw):
+def insert_register_data(username, password):
+    hashed_pw = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
     config.users.insert(
         {
             "Username": username,
@@ -65,4 +66,4 @@ def insert_bank_configuragion():
 
 
 def bank_pwd_hashing():
-    return bcrypt.hashpw(config.bank_password.encode("utf8"), bcrypt.gensalt())
+    return bcrypt.hashpw(config.bank_password.encode("utf-8"), bcrypt.gensalt())
