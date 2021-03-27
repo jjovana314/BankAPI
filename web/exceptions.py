@@ -10,6 +10,10 @@ class UsernameException(UserException):
     """ Raised if there is some isues with username. """
 
 
+class PasswordException(UserException):
+    """ Raised if password is not valid. """
+
+
 class SchemaError(UserException):
     """ General schema error. """
 
