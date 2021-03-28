@@ -16,33 +16,22 @@ class Login(Resource):
             BaseResponse instance with message and status for API
         """
         data = request.get_json()
+        helper.set_server_data(data)
 
-        is_valid, result = helper.validation(
-            config.users, schemas.login_schema, data, config.keys_login
-        )
+        is_valid, result = helper.validation(schemas.login_schema)
         if not is_valid:
             return jsonify(result)
         else:
-            username, _, sentance = result
+            username, _, sentence = result
 
         # updating Tokens and Sentance
-        helper.update_tokens(config.users, username, 1, operator.sub)
+        helper.update_tokens(1, operator.sub)
 
         # update sentance in database
         config.users.update(
-            {
-                "Username": username
-            },
-            {
-                "$set": {
-                    "Sentance": sentance
-                }
-            }
+            {"Username": username},
+            {"$set": {"Sentance": sentence}}
         )
         return jsonify(
-            {
-                "status": config.OK,
-                "msg": "You succesfully login.",
-                "sentance": sentance
-            }
+            {"status": config.OK, "msg": "You succesfully login.", "sentance": sentence}
         )
