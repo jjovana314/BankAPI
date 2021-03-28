@@ -2,9 +2,7 @@ import bcrypt
 import exceptions
 import operator
 import config
-from exception_messages import (
-    schema_errors, error_messages, schema_exceptions
-)
+import exception_messages as ex_msg
 from http import HTTPStatus
 from pymongo import MongoClient
 from flask import request
@@ -17,16 +15,16 @@ from json import dumps, loads
 server_data_global = dict()
 
 
-def set_server_data(server_data):
+def set_server_data(server_data: dict) -> None:
     global server_data_global
     server_data_global = server_data
 
 
-def get_username():
+def get_username() -> str:
     return server_data_global["username"]
 
 
-def get_admin_username():
+def get_admin_username() -> str:
     return server_data_global["admin"]
 
 
@@ -48,11 +46,11 @@ def validate_schema(schema: dict) -> None:
     except ValidationError as ex:
         # ! here we do not except JSONDecodeError, remember that!
         ex_str = str(ex)
-        for idx, value in enumerate(schema_errors):
+        for idx, value in enumerate(ex_msg.schema_errors):
             # create appropriate message for user
             # if there is exception occured
             if value in ex_str:
-                raise schema_exceptions[idx](error_messages[idx])
+                raise ex_msg.schema_exceptions[idx](ex_msg.error_messages[idx])
 
 
 def username_exist() -> bool:
@@ -61,28 +59,22 @@ def username_exist() -> bool:
     Returns:
         bool -- True if username exist, False otherwise
     """
-    if config.users.find({"Username": get_username()}).count() == 0:
-        return False
-    return True
+    return not (config.users.find({"Username": get_username()}).count() == 0)
 
 
-def verify_password(password: str) -> bool:
+def verify_password(password: str, username: str) -> bool:
     """ Password verification.
 
     Returns:
         bool -- True if password matches username, False otherwise
     """
     # check if username exist in database
-    if not username_exist(config.users):
+    if not username_exist():
         return False
 
-    password_db = config.users.find(
-        {
-            "Username": get_username()
-        }
-    )[0]["Password"]
-
-    hashed_pw = bcrypt.hashpw(password.encode("utf8"), password_db)
+    password_db = config.users.find({"Username": username})[0]["Password"]
+    password_encoded = password.encode("utf-8")
+    hashed_pw = bcrypt.hashpw(password_encoded, password_db)
     return hashed_pw == password_db
 
 
@@ -92,11 +84,7 @@ def count_tokens() -> int:
     Returns:
         int -- number of tokens
     """
-    return config.users.find(
-        {
-            "Username": get_username()
-        }
-    )[0]["Tokens"]
+    return config.users.find({"Username": get_username()})[0]["Tokens"]
 
 
 def validate_tokens(code: int) -> None:
@@ -152,15 +140,11 @@ def update_tokens(tokens_update: int, operation: operator) -> None:
     tokens_current = count_tokens()
     config.users.update(
         {"Username": get_username()},
-        {
-            "$set": {"Tokens": operation(tokens_current, tokens_update)}
-        }
+        {"$set": {"Tokens": operation(tokens_current, tokens_update)}}
     )
 
 
-def update_balance(
-    amount: float, money_curr: float, operation: operator
-) -> None:
+def update_balance(amount: float, money_curr: float, operation: operator) -> None:
     """ Update balance for account.
 
     Arguments:
@@ -178,9 +162,7 @@ def update_balance(
         )
     config.users.update(
         {"Username": get_username()},
-        {
-            "$set": {"Balance": operation(money_curr, amount)}
-        }
+        {"$set": {"Balance": operation(money_curr, amount)}}
     )
 
 
@@ -211,13 +193,15 @@ def validation(schema: dict, is_register=False, token_validation=True) -> tuple:
     if not status:
         return status, message_dict
     values = list(server_data_global.values())
-    # validate userame existance
+    # validate username existance
     usr_exist = username_exist()
 
     # if the class that our function is called by is not
     # Register class, we do the validation on specific way
     if not is_register:
-        inner_validation_caller(usr_exist, token_validation, schema)
+        inner_valid = inner_validation_caller(usr_exist, token_validation, schema)
+        if not inner_valid[0]:
+            return inner_valid[0], inner_valid[1]
     else:
         # if our caller is Register class
         # we want to report error if username exist
@@ -267,15 +251,15 @@ def inner_validation_caller(usr_exist, token_validation, schema):
         return (False,{
             "Message": "Admin password is missing",
             "Code": config.BAD_REQUEST
-            })
+        })
+    else:
+        return True, None
 
 
 values = []
 
 
-def inner_data_validation(
-    usr_exist: bool, token_validation: bool, schema: dict
-) -> None:
+def inner_data_validation(usr_exist: bool, token_validation: bool, schema: dict) -> None:
     """ Validate inner data from dictionary.
 
     Arguments:
@@ -290,16 +274,14 @@ def inner_data_validation(
                        if password is not valid
                        if user that sends money does not have tokens
     """
-
-    for dictionary in list(server_data_global.values()):
-
-        verification_all_pwd = verify_password(server_data_global["password"])
-
     if not usr_exist:
         raise exceptions.UserException(error_usr_exist, config.INVALID_USERNAME)
 
-    # remember to call password_invalid_exception_raising()
-    password_invalid_exception_raising()
+    if is_value_dict():
+        validate_password_dict()
+    else:
+        password_existance()
+        raise_exception_if_password_invalid()
 
     # if admin wants to validate that there is enough
     # tokens for current user
@@ -307,41 +289,57 @@ def inner_data_validation(
         validate_tokens(config.OUT_OF_TOKENS)
 
 
-def dict_append_caller(current_dict):
+def raise_exception_if_password_invalid():
+    if not password_validation_caller():
+        raise exceptions.PasswordException("Please enter valid password", config.BAD_REQUEST)
+
+
+def is_value_dict() -> bool:
+    for value in list(server_data_global.values()):
+        if isinstance(value, dict):
+            is_dict = True
+        else:
+            is_dict = False
+    return is_dict
+
+
+def validate_password_dict() -> None:
+    for value in list(server_data_globa.values()):
+        if isinstance(value, dict):
+            verification_all_pwd = verify_password(value["password"], get_username())
+            password_invalid_exception_raising(verification_all_pwd)
+            dict_append_caller(value)
+
+
+def dict_append_caller(current_dict: dict) -> None:
     dictionary_appending(config.users, current_dict)
 
 
-def admin_user_pwd():
+def password_existance() -> str:
     try:
         return server_data_global["password"]
     except KeyError:
         try:
             return server_data_global["admin_password"]
         except KeyError:
-            raise exceptions.UserException("Please enter password", config.INVALID_PASSWORD)
+            raise exceptions.PasswordException("Please enter password", config.INVALID_PASSWORD)
 
 
-def password_invalid_exception_raising():
-    if not verification_all_pwd:
-        raise exceptions.UserException(error_pwd_msg, config.INVALID_PASSWORD)
-
-
-def password_validation_caller(user: str) -> bool:
+def password_validation_caller() -> bool:
     """ Calling password_validation function and catch exception.
-
-    Arguments:
-        user {str} -- user's name in database
 
     Return:
         True if password is valid, False otherwise
     """
-    try:
-        return verify_password(server_data_global["password"], user)
-    except KeyError: 
-        return verify_password(server_data_global["admin_password"], "administrator")
+    user_password = server_data_global.get("password")
+    admin_password = server_data_global.get("admin_password")
+    # todo: also validate admin's password
+
+    if isinstance(user_password, str):
+        return verify_password(user_password, get_username())
 
 
-def dictionary_appending(current_dict: dict) -> bool:
+def dictionary_apending(current_dict: dict) -> bool:
     """ Appending dictionaries to list.
 
     Arguments:
@@ -356,9 +354,8 @@ def dictionary_appending(current_dict: dict) -> bool:
         values, verification_all_pwd = inner_dict_validation()
     else:
         values.append(current_dict)
-        user = data.get("username", None)
-        if user is not None:
-            verification_all_pwd = password_validation_caller(user)
+        verification_all_pwd = password_validation_caller()
+
     return verification_all_pwd
 
 
@@ -401,7 +398,8 @@ def balance_validation(username_user1: str, username_user2: str) -> None:
     balance_user2 = find_balance(username_user2)
     if balance_user1 < balance_user2:
         raise ValueError(
-            "You don't have enough money to perform this transaction", config.NOT_ENOUGH_MONEY
+            "You don't have enough money to perform this transaction",
+            config.NOT_ENOUGH_MONEY
         )
 
 
@@ -419,10 +417,10 @@ def amount_validation(amount: float) -> None:
         )
 
 
-def arguments_validation(server_values: list):
+def arguments_validation(server_values: list) -> tuple:
     try:
         username, password = server_values
     except ValueError as ex:
-        return {"message": ex.args[0], "code": config.BAD_REQUEST}, False
+        return {"Message": ex.args[0], "Code": config.BAD_REQUEST}, False
     else:
         return username, password
