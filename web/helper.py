@@ -11,7 +11,8 @@ from jsonschema.exceptions import ValidationError
 from json import dumps, loads
 
 
-# TODO: fix bug in inner_data_validation function
+# TODO: finish documentation
+
 server_data_global = dict()
 
 
