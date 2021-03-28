@@ -11,21 +11,36 @@ from jsonschema.exceptions import ValidationError
 from json import dumps, loads
 
 
-# TODO: finish documentation
+# TODO: finish testing
 
 server_data_global = dict()
 
 
 def set_server_data(server_data: dict) -> None:
+    """ Get data from server and ser global variable.
+
+    Arguments:
+        server_data {dict} -- data from server
+    """
     global server_data_global
     server_data_global = server_data
 
 
 def get_username() -> str:
+    """ Get username from server data.
+
+    Returns:
+        username from server data
+    """
     return server_data_global["username"]
 
 
 def get_admin_username() -> str:
+    """ Get admin username from server data
+
+    Returns:
+        admin username from server data
+    """
     return server_data_global["admin"]
 
 
@@ -34,7 +49,6 @@ def validate_schema(schema: dict) -> None:
 
     Arguments:
         schema {dict} -- valid dictionary
-        data {dict} -- dictionary for validation
 
     Raises:
         SchemaError: if data dictionary is not valid
@@ -178,7 +192,6 @@ def validation(schema: dict, is_register=False, token_validation=True) -> tuple:
 
     Arguments:
         schema {dict} -- schema for validation
-        data {dict} -- data dictionary for validation
         is_register {:obj:'boolean', optional} -- True if class Register is caller.
                                                   Default is False
         token_validation {:obj"'bolean', optional} -- False if caller does not want
@@ -208,10 +221,7 @@ def validation(schema: dict, is_register=False, token_validation=True) -> tuple:
         # we want to report error if username exist
         # in database
         if usr_exist:
-            return (False, {
-                "Message": error_usr_notexist,
-                "Code": config.INVALID_USERNAME
-            })
+            return False, {"Message": error_usr_notexist, "Code": config.INVALID_USERNAME}
 
     return True, values
 
@@ -238,21 +248,27 @@ def schema_validation_caller(schema: dict) -> tuple:
         return True, None
 
 
-def inner_validation_caller(usr_exist, token_validation, schema):
+def inner_validation_caller(usr_exist: bool, token_validation: bool, schema: dict) -> tuple:
+    """ Validate inner dictionary from server data.
+
+    Arguments:
+        usr_exist {bool} -- True if user exists in database, False otherwise
+        token_validation {bool} -- True if we want to vallidate user's tokens, False otherwise
+        schema {dict} -- schema for server_data validation
+
+    Returns:
+        Tuple with information about validation:
+            False and dictionary about exception that occured,
+            or True and None object if server data is valid
+    """
     try:
         inner_data_validation(usr_exist, token_validation, schema)
     except exceptions.UserException as ex:
-        return (False, {
-            "Message": ex.args[0],
-            "Code": ex.args[1]
-        })
+        return False, {"Message": ex.args[0], "Code": ex.args[1]}
     # if KeyError occures then we don't have admin password
     # in data dictionary
     except KeyError:
-        return (False,{
-            "Message": "Admin password is missing",
-            "Code": config.BAD_REQUEST
-        })
+        return False, {"Message": "Admin password is missing", "Code": config.BAD_REQUEST}
     else:
         return True, None
 
@@ -290,12 +306,18 @@ def inner_data_validation(usr_exist: bool, token_validation: bool, schema: dict)
         validate_tokens(config.OUT_OF_TOKENS)
 
 
-def raise_exception_if_password_invalid():
+def raise_exception_if_password_invalid() -> None:
+    """ Raising PasswrodException if password is invalid. """
     if not password_validation_caller():
         raise exceptions.PasswordException("Please enter valid password", config.BAD_REQUEST)
 
 
 def is_value_dict() -> bool:
+    """ Check if value from outter dicionary is also dictionary.
+
+    Returns:
+        True if value is dictionary, False otherwise
+    """
     for value in list(server_data_global.values()):
         if isinstance(value, dict):
             is_dict = True
@@ -305,18 +327,27 @@ def is_value_dict() -> bool:
 
 
 def validate_password_dict() -> None:
+    """ Validate password inside inner dictionary from server data.
+
+    Raise:
+        PasswordException if password is not valid
+    """
     for value in list(server_data_globa.values()):
         if isinstance(value, dict):
             verification_all_pwd = verify_password(value["password"], get_username())
             password_invalid_exception_raising(verification_all_pwd)
-            dict_append_caller(value)
-
-
-def dict_append_caller(current_dict: dict) -> None:
-    dictionary_appending(config.users, current_dict)
+            dictionary_apending(config.users, value)
 
 
 def password_existance() -> str:
+    """ Try to get password from server data and handling KeyError exception.
+
+    Raise:
+        PasswordException if password does not exist in server data
+
+    Returns:
+        password value from server if password exists
+    """
     try:
         return server_data_global["password"]
     except KeyError:
@@ -360,22 +391,19 @@ def dictionary_apending(current_dict: dict) -> bool:
     return verification_all_pwd
 
 
-def inner_dict_validation(data: dict) -> tuple:
+def inner_dict_validation() -> tuple:
     """ Validation for inner dictionary.
-
-    Arguments:
-        data {dict} -- outter dictioanry
 
     Returns:
         tuple: list with values from inner dictionary,
         username from first user, and validation for
         all passwords
     """
-    usr_1 = data["user1"]["username"]
-    pwd_1 = data["user1"]["password"]
+    usr_1 = server_data_global["user1"]["username"]
+    pwd_1 = server_data_global["user1"]["password"]
 
-    usr_2 = data["user2"]["username"]
-    pwd_2 = data["user2"]["password"]
+    usr_2 = server_data_global["user2"]["username"]
+    pwd_2 = server_data_global["user2"]["password"]
 
     verify_1 = verify_password(pwd_1, usr_1)
     verify_2 = verify_password(pwd_2, usr_2)
@@ -399,26 +427,20 @@ def balance_validation(username_user1: str, username_user2: str) -> None:
     balance_user2 = find_balance(username_user2)
     if balance_user1 < balance_user2:
         raise ValueError(
-            "You don't have enough money to perform this transaction",
-            config.NOT_ENOUGH_MONEY
-        )
-
-
-def find_balance(username: str) -> float:
-    return config.users.find(
-        {"Username": get_username()}
-    )[0]["Balance"]
-
-
-def amount_validation(amount: float) -> None:
-    balance_usr = find_balance()
-    if amount > balance_usr:
-        raise ValueError(
-            "You don't have enough money to pay loan.", config.NOT_ENOUGH_MONEY
+            "You don't have enough money to perform this transaction", config.NOT_ENOUGH_MONEY
         )
 
 
 def arguments_validation(server_values: list) -> tuple:
+    """ Validate arguments from server dictionary.
+
+    Arguments:
+        server_values {list} -- values that we got from server
+
+    Returns:
+        Tuple with username and password if they exist,
+        or dictionary with message and code and False if they are not in server_values
+    """
     try:
         username, password = server_values
     except ValueError as ex:
