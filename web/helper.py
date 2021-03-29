@@ -260,7 +260,7 @@ def inner_validation_caller(usr_exist: bool, token_validation: bool, schema: dic
     # if KeyError occures then we don't have admin password
     # in data dictionary
     except KeyError:
-        return False, {"Message": "Admin password is missing", "Code": config.BAD_REQUEST}
+        return False, {"Message": "Admin password is missing", "Code": config.INVALID_PASSWORD}
     else:
         return True, None
 
