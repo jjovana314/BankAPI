@@ -206,24 +206,21 @@ def validation(schema: dict, is_register=False, token_validation=True) -> tuple:
     status, message_dict = schema_validation_caller(schema)
     if not status:
         return status, message_dict
-    values = list(server_data_global.values())
-    # validate username existance
-    usr_exist = username_exist()
 
     # if the class that our function is called by is not
     # Register class, we do the validation on specific way
     if not is_register:
-        inner_valid = inner_validation_caller(usr_exist, token_validation, schema)
-        if not inner_valid[0]:
-            return inner_valid[0], inner_valid[1]
+        is_valid, message = inner_validation_caller(username_exist(), token_validation, schema)
+        if not is_valid:
+            return is_valid, message
     else:
         # if our caller is Register class
         # we want to report error if username exist
         # in database
-        if usr_exist:
+        if username_exist():
             return False, {"Message": error_usr_notexist, "Code": config.INVALID_USERNAME}
 
-    return True, values
+    return True, list(server_data_global.values())
 
 
 def schema_validation_caller(schema: dict) -> tuple:
