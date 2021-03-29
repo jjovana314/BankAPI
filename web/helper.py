@@ -301,7 +301,7 @@ def inner_data_validation(usr_exist: bool, token_validation: bool, schema: dict)
 def raise_exception_if_password_invalid() -> None:
     """ Raising PasswrodException if password is invalid. """
     if not password_validation_caller():
-        raise exceptions.PasswordException("Please enter valid password", config.BAD_REQUEST)
+        raise exceptions.PasswordException("Please enter valid password", config.INVALID_PASSWORD)
 
 
 def is_value_dict() -> bool:
