@@ -310,12 +310,7 @@ def is_value_dict() -> bool:
     Returns:
         True if value is dictionary, False otherwise
     """
-    for value in list(server_data_global.values()):
-        if isinstance(value, dict):
-            is_dict = True
-        else:
-            is_dict = False
-    return is_dict
+    return all([isinstance(value, dict) for value in list(server_data_global.values())])
 
 
 def validate_password_dict() -> None:
