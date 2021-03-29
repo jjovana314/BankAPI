@@ -27,6 +27,9 @@ class PasswordChange(Resource):
 
         new_pwd_hashed = bcrypt.hashpw(new_pwd.encode("utf-8"), bcrypt.gensalt())
 
+        if helper.new_old_passwords_equal():
+            return jsonify({"Message": "Old password cannot be new password", "Code": config.INVALID_PASSWORD})
+
         # removing one token
         helper.update_tokens(1, operator.sub)
 
