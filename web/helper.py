@@ -202,7 +202,6 @@ def validation(schema: dict, is_register=False, token_validation=True) -> tuple:
                 and message that explains error that occures,
                 or values from data dictionary if data is valid
     """
-    # user data validation
     status, message_dict = schema_validation_caller(schema)
     if not status:
         return status, message_dict
@@ -215,8 +214,7 @@ def validation(schema: dict, is_register=False, token_validation=True) -> tuple:
             return is_valid, message
     else:
         # if our caller is Register class
-        # we want to report error if username exist
-        # in database
+        # we want to report error if username exist in database
         if username_exist():
             return False, {"Message": error_usr_notexist, "Code": config.INVALID_USERNAME}
 
