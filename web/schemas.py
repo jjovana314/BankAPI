@@ -16,7 +16,7 @@ login_schema = {
         "sentence": {"type": "string", "minLength": 1, "maxLenth": 20}
     },
     "additionalProperties": False,
-    "required": ["username", "password", "sentance"]
+    "required": ["username", "password", "sentence"]
 }
 
 pass_change_schema = {
