@@ -447,3 +447,8 @@ def arguments_validation(server_values: list) -> tuple:
         return {"Message": ex.args[0], "Code": config.BAD_REQUEST}, False
     else:
         return username, password
+
+
+def new_old_passwords_equal() -> bool:
+    global server_data_global
+    return server_data_global["password"] == server_data_global["new_password"]
