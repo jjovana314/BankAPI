@@ -235,10 +235,7 @@ def schema_validation_caller(schema: dict) -> tuple:
     try:
         validate_schema(schema)
     except exceptions.SchemaError as ex:
-        return (False, {
-            "Message": error_schema,
-            "Code": config.SCHEMA_NOT_MATCH
-        })
+        return False, {"Message": error_schema, "Code": config.SCHEMA_NOT_MATCH}
     else:
         return True, None
 
