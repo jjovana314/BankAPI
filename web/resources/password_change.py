@@ -18,38 +18,18 @@ class PasswordChange(Resource):
         """
         # try to get data from user
         data = request.get_json()
-
-        is_valid, result = helper.validation(
-            config.users, schemas.pass_change_schema,
-            data, config.password_change_keys
-        )
+        helper.set_server_data(data)
+        is_valid, result = helper.validation(schemas.pass_change_schema)
         if not is_valid:
             return jsonify(result)
 
         username, _, new_pwd = result
 
-        new_pwd_hashed = bcrypt.hashpw(
-            new_pwd.encode("utf8"), bcrypt.gensalt()
-        )
+        new_pwd_hashed = bcrypt.hashpw(new_pwd.encode("utf-8"), bcrypt.gensalt())
 
         # removing one token
-        helper.update_tokens(config.users, username, 1, operator.sub)
+        helper.update_tokens(1, operator.sub)
 
         # changing password
-        config.users.update(
-            {
-                "Username": username
-            },
-            {
-                "$set":
-                    {
-                        "Password": new_pwd_hashed
-                    }
-            }
-        )
-        return jsonify(
-            {
-                "status": config.OK,
-                "msg": "Password changed succesfully."
-            }
-        )
+        config.users.update({"Username": username}, {"$set": {"Password": new_pwd_hashed}})
+        return jsonify({"status": config.OK, "msg": "Password changed succesfully."})
