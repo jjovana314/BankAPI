@@ -186,8 +186,7 @@ def update_balance(amount: float, money_curr: float, operation: operator) -> Non
     """
     if not (operation is operator.sub or operation is operator.add):
         raise exceptions.UserException(
-            "You can only add or subtract balance from account",
-            config.BAD_REQUEST
+            "You can only add or subtract balance from account", config.BAD_REQUEST
         )
     config.users.update(
         {"Username": get_username()},
@@ -458,5 +457,5 @@ def new_old_passwords_equal() -> bool:
         True if passwords are equal, false otherwise
     """
     global server_data_global
-    old_owd = 
-    return server_data_global["password"] == server_data_global["new_password"]
+    old_owd = find_in_database(get_username(), "Password")
+    return old_owd == server_data_global["new_password"]
