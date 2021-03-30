@@ -338,24 +338,29 @@ def password_existance() -> str:
     try:
         return server_data_global["password"]
     except KeyError:
-        try:
-            return server_data_global["admin_password"]
-        except KeyError:
-            raise exceptions.PasswordException("Please enter password", config.INVALID_PASSWORD)
+        return admin_password_existance()
 
 
-def password_validation_caller() -> bool:
+def admin_password_existance():
+    try:
+        return server_data_global["admin_password"]
+    except KeyError:
+        raise exceptions.PasswordException("Please enter password", config.INVALID_PASSWORD)
+
+
+def password_validation_caller(username_key: str, password_key: str) -> bool:
     """ Calling password_validation function and catch exception.
 
     Return:
         True if password is valid, False otherwise
     """
-    user_password = server_data_global.get("password")
-    admin_password = server_data_global.get("admin_password")
-    # todo: also validate admin's password
+    password_value = server_data_global.get(password_key)
+    if password_value is not None:
+        return verify_password(password_value, server_data_global[username_key])
 
-    if isinstance(user_password, str):
-        return verify_password(user_password, get_username())
+
+def check_password_diff_username(username, password):
+    password = server_data_global.get()
 
 
 def dictionary_apending(current_dict: dict) -> bool:
