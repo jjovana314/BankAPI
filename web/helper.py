@@ -87,10 +87,26 @@ def verify_password(password: str, username: str) -> bool:
     if not username_exist():
         return False
 
-    password_db = config.users.find({"Username": username})[0]["Password"]
     password_encoded = password.encode("utf-8")
-    hashed_pw = bcrypt.hashpw(password_encoded, password_db)
-    return hashed_pw == password_db
+    hashed_pw = bcrypt.hashpw(password_encoded, find_users_password(username, "Password"))
+    return hashed_pw == find_users_password(username, "Password")
+
+
+def find_in_database(username: str, pattern: str) -> object:
+    """ Find something in database for current user.
+
+    Arguments:
+        username {str} -- username
+        pattern {str} -- pattern for search in database
+
+    Returns:
+        data found in database
+
+    Notes:
+        if we want to find password of user whos name is tom in database, we will call:
+        find_in_database("tom", "Password")
+    """
+    return config.users.find({"Username": username})[0][pattern]
 
 
 def count_tokens() -> int:
@@ -438,5 +454,11 @@ def arguments_validation(server_values: list) -> tuple:
 
 
 def new_old_passwords_equal() -> bool:
+    """ Make sure that old password is not equal to new password.
+
+    Returns:
+        True if passwords are equal, false otherwise
+    """
     global server_data_global
+    old_owd = 
     return server_data_global["password"] == server_data_global["new_password"]
