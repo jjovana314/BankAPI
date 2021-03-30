@@ -115,7 +115,7 @@ def count_tokens() -> int:
     Returns:
         int -- number of tokens
     """
-    return config.users.find({"Username": get_username()})[0]["Tokens"]
+    return find_in_database(get_username(), "Tokens")
 
 
 def validate_tokens(code: int) -> None:
@@ -128,9 +128,7 @@ def validate_tokens(code: int) -> None:
         TokensException: if user does not have enough tokens
     """
     if count_tokens() <= 0:
-        raise exceptions.TokensException(
-            "You are out of tokens, please refill.", code
-        )
+        raise exceptions.TokensException("You are out of tokens, please refill.", code)
 
 
 def validate_username(code: int) -> None:
