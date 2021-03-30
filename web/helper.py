@@ -359,10 +359,6 @@ def password_validation_caller(username_key: str, password_key: str) -> bool:
         return verify_password(password_value, server_data_global[username_key])
 
 
-def check_password_diff_username(username, password):
-    password = server_data_global.get()
-
-
 def dictionary_apending(current_dict: dict) -> bool:
     """ Appending dictionaries to list.
 
