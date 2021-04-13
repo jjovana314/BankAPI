@@ -3,7 +3,7 @@ from config import api, app
 from resources.register import Register
 from resources.login import Login
 from resources.password_change import PasswordChange
-from resources.username_cheange import UsernameChange
+from resources.username_change import UsernameChange
 from resources.refill import Refill
 from resources.update_balance import UpdateBalance
 from resources.check_balance import CheckBalance
