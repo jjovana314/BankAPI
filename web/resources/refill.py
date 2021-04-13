@@ -17,32 +17,17 @@ class Refill(Resource):
             BaseResponse object with message and code
         """
         # crypting admin password (global variable)
-        admin_pwd_crypted = bcrypt.hashpw(
-            config.admin_pwd.encode("utf8"), bcrypt.gensalt()
-        )
-        config.users.insert(
-            {
-                "Username": config.admin_name,
-                "Password": admin_pwd_crypted
-            }
-        )
+        admin_pwd_crypted = bcrypt.hashpw(config.admin_pwd.encode("utf8"), bcrypt.gensalt())
+        config.users.insert({"Username": config.admin_name,"Password": admin_pwd_crypted})
 
         # get data
-        data = request.get_json()
+        helper.set_server_data(request.get_json())
 
-        validation, result = helper.validation(
-            config.users, schemas.refill_schema, data,
-            config.refill_keys, token_validation=False
-        )
+        validation, result = helper.validation(schemas.refill_schema, token_validation=False)
         if not validation:
             return jsonify(result)
         username, _, tokens_add = result
 
         # adding tokens
-        helper.update_tokens(config.users, username, tokens_add, operator.add)
-        return jsonify(
-            {
-                "Message": "Tokens updated successfully.",
-                "Code": config.OK
-            }
-        )
+        helper.update_tokens(username, tokens_add, operator.add)
+        return jsonify({"Message": "Tokens updated successfully.", "Code": config.OK})
