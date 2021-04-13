@@ -16,11 +16,9 @@ class Refill(Resource):
         Returns:
             BaseResponse object with message and code
         """
-        # crypting admin password (global variable)
         admin_pwd_crypted = bcrypt.hashpw(config.admin_pwd.encode("utf8"), bcrypt.gensalt())
         config.users.insert({"Username": config.admin_name,"Password": admin_pwd_crypted})
 
-        # get data
         helper.set_server_data(request.get_json())
 
         validation, result = helper.validation(schemas.refill_schema, token_validation=False)
@@ -28,6 +26,5 @@ class Refill(Resource):
             return jsonify(result)
         username, _, tokens_add = result
 
-        # adding tokens
         helper.update_tokens(username, tokens_add, operator.add)
         return jsonify({"Message": "Tokens updated successfully.", "Code": config.OK})
