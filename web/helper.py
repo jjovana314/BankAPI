@@ -44,6 +44,15 @@ def get_admin_username() -> str:
     return server_data_global["admin"]
 
 
+def get_admin_data() -> tuple:
+    name = config.administrator.find({"Username": config.admin_name})[0]["Username"]
+    password = config.administrator.find({"Username": config.admin_name})[0]["Password"]
+    return name, password
+
+
+admin_name, admin_pwd = get_admin_data()
+
+
 def validate_schema(schema: dict) -> None:
     """ JSON schema validation.
 
@@ -83,13 +92,19 @@ def verify_password(password: str, username: str) -> bool:
     Returns:
         bool -- True if password matches username, False otherwise
     """
-    # check if username exist in database
     if not username_exist():
         return False
 
     password_encoded = password.encode("utf-8")
-    hashed_pw = bcrypt.hashpw(password_encoded, find_users_password(username, "Password"))
-    return hashed_pw == find_users_password(username, "Password")
+    try:
+        password_existance()
+    except exceptions.PasswordException:
+        password_database = config.administrator.find({"Password": admin_pwd})[0]["Password"]
+    else:
+        password_database = find_in_database(username, "Password")
+
+    hashed_pw = bcrypt.hashpw(password_encoded, password_database)
+    return hashed_pw == password_database
 
 
 def find_in_database(username: str, pattern: str) -> object:
@@ -313,7 +328,15 @@ def inner_data_validation(usr_exist: bool, token_validation: bool, schema: dict)
 
 def raise_exception_if_password_invalid() -> None:
     """ Raising PasswrodException if password is invalid. """
-    if not password_validation_caller():
+    pwd_key = "password"
+    try:
+        server_data_global[pwd_key]
+        name = get_username()
+    except KeyError:
+        pwd_key = "admin_password"
+        name = "administrator"
+
+    if not password_validation_caller("username", pwd_key):
         raise exceptions.PasswordException("Please enter valid password", config.INVALID_PASSWORD)
 
 
