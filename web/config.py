@@ -42,3 +42,6 @@ client = MongoClient("mongodb://db:27017")
 db = client.BankUsers
 users = db["Users"]
 bank = db["Bank"]
+administrator = db["Admin"]
+
+administrator.insert({"Username": admin_name, "Password": admin_pwd})
