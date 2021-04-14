@@ -22,24 +22,10 @@ class PayLoan(Resource):
         if not is_valid:
             return jsonify(result)
         username = data["username"]
-        balance_usr = config.users.find(
-            {
-                "Username": username
-            }
-        )[0]["Balance"]
+        balance_usr = helper.find_balance(username)
         amount = data["amount"]
-        if amount > balance_usr:
-            return jsonify(
-                {
-                    "Message": "You don't have enough money to pay loan.",
-                    "Code": config.NOT_ENOUGH_MONEY
-                }
-            )
-        bank_balance = config.bank.find(
-            {
-                "Username": config.bank_name
-            }
-        )[0]["Balance"]
+        
+        bank_balance = helper.find_balance(config.bank_name)
         helper.update_balance(
             config.bank, config.bank_name, amount, bank_balance, operator.add
         )
